@@ -5,3 +5,9 @@
 # React Router
 /.react-router/
 /build/
+
+# IDE
+.idea/
+*.iml
+# Explicitly ignore workspace if .idea is partially shared
+.idea/workspace.xml

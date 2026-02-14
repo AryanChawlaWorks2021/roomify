@@ -2,6 +2,8 @@ import Navbar from "components/Navbar";
 import type {Route} from "./+types/home";
 import {ArrowRight, ArrowUpRight, Clock, Layers} from "lucide-react";
 import Button from "../../components/ui/Button";
+import Upload from "components/Upload";
+import {useNavigate} from "react-router";
 
 export function meta({}: Route.MetaArgs) {
     return [
@@ -11,6 +13,23 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
+
+    const navigate = useNavigate();
+
+    const handleUploadComplete = (base64Image: string) => {
+        const newId = Date.now().toString();
+        try {
+            // Persist the uploaded image so the visualizer route can retrieve it
+            sessionStorage.setItem(`uploadedImage:${newId}`, base64Image);
+        } catch (e) {
+            // Fallback is navigation state if storage is unavailable
+            navigate(`/visualizer/${newId}`, { state: { image: base64Image } });
+            return;
+        }
+        // Navigate to the visualizer; it will read from sessionStorage first, then state
+        navigate(`/visualizer/${newId}`, { state: { image: base64Image } });
+    }
+
     return (
         <div className="home">
             <Navbar/>
@@ -51,7 +70,7 @@ export default function Home() {
                             <p>Supports JPG, PNG, formats up to 10MB</p>
                         </div>
 
-                        <p>Upload images</p>
+                        <Upload onComplete={handleUploadComplete}/>
                     </div>
                 </div>
 
