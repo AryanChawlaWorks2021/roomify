@@ -9,5 +9,4 @@
 # IDE
 .idea/
 *.iml
-# Explicitly ignore workspace if .idea is partially shared
 .idea/workspace.xml
