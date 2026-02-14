@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {useOutletContext} from "react-router";
 import {UploadIcon, ImageIcon, CheckCircle2} from "lucide-react";
-import { PROGRESS_INTERVAL_MS, PROGRESS_STEP, REDIRECT_DELAY_MS } from "lib/constants";
+import { PROGRESS_INTERVAL_MS, PROGRESS_STEP, REDIRECT_DELAY_MS, MAX_UPLOAD_SIZE_BYTES, ALLOWED_MIME_TYPES } from "lib/constants";
 
 
 type UploadProps = {
@@ -15,14 +15,25 @@ const Upload = ({ onComplete }: UploadProps) => {
     const [progress, setProgress] = useState(0);
     const dataUrlRef = useRef<string | null>(null);
     const intervalRef = useRef<number | null>(null);
+    const timeoutRef = useRef<number | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const {isSignedIn} = useOutletContext<AuthContext>();
+
+    const clearRedirectTimeout = () => {
+        if (timeoutRef.current !== null) {
+            window.clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+    };
 
     const clearProgressInterval = () => {
         if (intervalRef.current !== null) {
             window.clearInterval(intervalRef.current);
             intervalRef.current = null;
         }
+        // Also clear any pending redirect timeout to avoid firing after unmount
+        clearRedirectTimeout();
     };
 
     useEffect(() => {
@@ -32,7 +43,9 @@ const Upload = ({ onComplete }: UploadProps) => {
     }, []);
 
     const startProgress = useCallback(() => {
+        // reset any prior timers
         clearProgressInterval();
+        setError(null);
         setProgress(0);
         intervalRef.current = window.setInterval(() => {
             setProgress((prev) => {
@@ -40,7 +53,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                 if (next === 100) {
                     clearProgressInterval();
                     // Delay completion to simulate redirect timing
-                    window.setTimeout(() => {
+                    timeoutRef.current = window.setTimeout(() => {
                         if (dataUrlRef.current) {
                             onComplete(dataUrlRef.current);
                         }
@@ -53,6 +66,25 @@ const Upload = ({ onComplete }: UploadProps) => {
 
     const processFile = useCallback((f: File) => {
         if (!isSignedIn) return; // Block all logic when signed out
+
+        // Pre-read validation
+        const isTypeAllowed = (ALLOWED_MIME_TYPES as readonly string[]).includes(f.type);
+        const isSizeAllowed = f.size <= MAX_UPLOAD_SIZE_BYTES;
+        if (!isTypeAllowed || !isSizeAllowed) {
+            const maxMb = Math.floor(MAX_UPLOAD_SIZE_BYTES / (1024 * 1024));
+            const types = 'JPG, PNG';
+            setError(!isTypeAllowed
+                ? `Unsupported file type. Allowed types: ${types}.`
+                : `File is too large. Maximum size is ${maxMb}MB.`);
+            // reset state on invalid file
+            dataUrlRef.current = null;
+            setFile(null);
+            setProgress(0);
+            clearProgressInterval();
+            return;
+        }
+
+        setError(null);
         setFile(f);
         const reader = new FileReader();
         reader.onload = () => {
@@ -66,6 +98,7 @@ const Upload = ({ onComplete }: UploadProps) => {
             setFile(null);
             setProgress(0);
             clearProgressInterval();
+            setError('Failed to read the file. Please try again.');
         };
         reader.readAsDataURL(f);
     }, [isSignedIn, startProgress]);
@@ -118,7 +151,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                     <input
                         type="file"
                         className="drop-input"
-                        accept=".jpg, .jpeg, .png"
+                        accept="image/jpeg, image/png"
                         disabled={!isSignedIn}
                         onChange={onChange}
                     />
@@ -132,8 +165,11 @@ const Upload = ({ onComplete }: UploadProps) => {
                                 : ("Sign in or sign up with puter to upload")}
                         </p>
                         <p className="help">
-                            Maximum file size 50MB.
+                            {`Supports JPG, PNG. Maximum file size ${Math.floor(MAX_UPLOAD_SIZE_BYTES / (1024 * 1024))}MB.`}
                         </p>
+                        {error && (
+                            <p className="error" role="alert">{error}</p>
+                        )}
                     </div>
                 </div>
             ) : (
