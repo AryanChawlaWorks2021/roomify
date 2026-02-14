@@ -18,8 +18,16 @@ export default function Home() {
 
     const handleUploadComplete = (base64Image: string) => {
         const newId = Date.now().toString();
-
-        navigate(`/visualizer/${newId}`);
+        try {
+            // Persist the uploaded image so the visualizer route can retrieve it
+            sessionStorage.setItem(`uploadedImage:${newId}`, base64Image);
+        } catch (e) {
+            // Fallback is navigation state if storage is unavailable
+            navigate(`/visualizer/${newId}`, { state: { image: base64Image } });
+            return;
+        }
+        // Navigate to the visualizer; it will read from sessionStorage first, then state
+        navigate(`/visualizer/${newId}`, { state: { image: base64Image } });
     }
 
     return (
