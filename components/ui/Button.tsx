@@ -1,49 +1,38 @@
-import React from 'react';
+import {type ButtonHTMLAttributes} from 'react';
 
-export type ButtonVariant =
-  | 'primary'
-  | 'secondary'
-  | 'tertiary'
-  | 'success'
-  | 'warning'
-  | 'danger'
-  | 'ghost';
-
-export type ButtonSize = 'sm' | 'md' | 'lg';
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  fullWidth?: boolean;
-  className?: string;
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
+    size?: 'sm' | 'md' | 'lg';
+    fullWidth?: boolean;
 }
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ');
-}
+const Button = ({
+                    variant = 'primary',
+                    size = 'md',
+                    fullWidth = false,
+                    className = '',
+                    children,
+                    ...props
+                }: ButtonProps) => {
 
-export const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  size = 'md',
-  fullWidth,
-  className,
-  children,
-  ...props
-}) => {
-  const classes = cx(
-    'btn',
-    `btn--${variant}`,
-    `btn--${size}`,
-    fullWidth && 'btn--fullWidth',
-    className
-  );
+    const baseClass = 'btn';
+    const variantClass = `btn--${variant}`;
+    const sizeClass = `btn--${size}`;
+    const fullWidthClass = fullWidth ? 'btn--full' : '';
 
-  return (
-    <button className={classes} {...props}>
-      {children}
-    </button>
-  );
+    const combinedClasses = [
+        baseClass,
+        variantClass,
+        sizeClass,
+        fullWidthClass,
+        className
+    ].filter(Boolean).join(' ');
+
+    return (
+        <button className={combinedClasses} {...props}>
+            {children}
+        </button>
+    );
 };
 
 export default Button;
